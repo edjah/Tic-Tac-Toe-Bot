@@ -23,9 +23,7 @@ Instructions
 6. Load the saved neural network parameters `theta1.txt` and `theta2.txt` with `bot.load('theta0.txt', 'theta1.txt')`
 7. See how the trained bot (Computer 1) does when it plays against a random opponent with `bot.play_self(100)`
 8. Play against the bot yourself with `bot.play_human()`
-9. You will be prompted to place a 1 onto an empty square. Input a tuple of the form `(y,x)` where `(0,0)` would be the top-left corner of the board, and (2,2) would be the bottom-right corner of the board. For instance selecting `(0,2)` would get the following result in this situation.
-
-[[0 0 0]
+9. You will be prompted to place a 1 onto an empty square. Input a tuple of the form `(y,x)` where `(0,0)` would be the top-left corner of the board, and (2,2) would be the bottom-right corner of the board. For instance selecting `(0,2)` would get the following result in this situation. [[0 0 0]
  [0 0 0]
  [0 0 0]]
 Place a 1 onto an empty square: (0,2)
