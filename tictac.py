@@ -169,7 +169,7 @@ class TicTacToeBot:
 		else:
 			return 1
 
-	def train(self, num_subjects, num_tribulations, num_generations, mutation_parameter, show_progress, start_randomly):
+	def train(self, num_subjects=20, num_tribulations=100, num_generations=20, mutation_parameter=0.05, show_progress=True, start_randomly=True):
 
 		if start_randomly:
 			self.thetas = theta_generator(self.num_blocks, self.num_hidden_layers - 1, 1)
@@ -182,7 +182,7 @@ class TicTacToeBot:
 			subjects = [None] * num_subjects
 			for i in range(num_subjects):
 				delta = theta_generator(self.num_blocks, self.num_hidden_layers - 1, mutation_parameter)
-				subjects[i] = tuple(self.thetas[i] + delta[i] for i in range(self.num_thetas))
+				subjects[i] = tuple(self.thetas[k] + delta[k] for k in range(self.num_thetas))
 
 			results = [0] * num_subjects
 			for i in range(num_subjects):
@@ -204,8 +204,8 @@ class TicTacToeBot:
 
 			self.thetas = subjects[results.index(best_performance)]
 			last_performance = best_performance
-
-		self.trained = True
+			self.trained = True
+		
 		print('Done training!')
 
 	def load(self, *thetas):
@@ -213,6 +213,10 @@ class TicTacToeBot:
 		self.num_thetas = len(thetas)
 		self.num_hidden_layers = self.num_thetas - 1
 		self.trained = True
+
+	def save(self, varname='theta'):
+		for i in range(len(self.thetas)):
+			np.savetxt(varname + str(i) + '.txt', self.thetas[i])
 
 	def play_self(self, num_iters):
 		if not self.trained:
@@ -263,8 +267,3 @@ def neural_network_move(turn, thetas, board):
 	indices = np.nonzero(vals * (a == 0))[0]
 	best_guess = indices[np.argmax(vals[indices])]
 	return np.unravel_index(best_guess, board.shape)
-
-# test = TicTacToeBot(num_hidden_layers=1)
-# #test.load('theta111_improved.txt', 'theta222_improved.txt')
-# test.train(20, 30, 100, 0.05, True, True)
-# test.play_self(1000)
