@@ -3,7 +3,7 @@
 
 Info
 -----
-This is a simple implementation of 2-dimensional (n-dimensional coming soon) Tic-Tac-Toe. The only thing is that the computer has not been explicitly programmed to play Tic-Tac-Toe. It learns to play through trial and error (neural networks and evolutionary algorithsm)
+This is a simple implementation of 2-dimensional (n-dimensional coming soon) Tic-Tac-Toe. The only thing is that the computer has not been explicitly programmed to play Tic-Tac-Toe. It learns to play through trial and error (neural networks and evolutionary algorithms)
 
 Requirements
 -------------
