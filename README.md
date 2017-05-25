@@ -7,7 +7,7 @@ This is a simple implementation of 2-dimensional (n-dimensional coming soon) Tic
 
 Requirements
 -------------
-Tic-Tac-Toe-Bot runs on Python2. It is also dependent on a few modules
+Tic-Tac-Toe-Bot runs on Python2. It is also dependent on a few modules.
 Use `pip2 install (module)` to install these if you don't already have them
 * numpy
 * termcolor
@@ -19,8 +19,8 @@ Instructions
 2. Go to the Tic-Toe-Toe-Bot directory with `cd Tic-Tac-Toe-Bot`
 3. Start up python with `python2`
 4. Enter `from tictac import TicTacToeBot`
-5. Instantiate a new bot with `bot = TicToeToeBot()
-6. Load the saved neural network parameters `theta1.txt` and `theta2.txt` with `bot.load('theta0.txt', 'theta1.txt')`
+5. Instantiate a new bot with `bot = TicTacToeBot()`
+6. Load the saved neural network parameters `theta0.txt` and `theta1.txt` with `bot.load('theta0.txt', 'theta1.txt')`
 7. See how the trained bot (Computer 1) does when it plays against a random opponent with `bot.play_self(100)`
 8. Play against the bot yourself with `bot.play_human()`
 9. You will be prompted to place a 1 onto an empty square. Input a tuple of the form `(y,x)` where `(0,0)` would be the top-left corner of the board, and (2,2) would be the bottom-right corner of the board.
