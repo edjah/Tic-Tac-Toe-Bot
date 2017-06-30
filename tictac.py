@@ -1,5 +1,7 @@
 import numpy as np
 from termcolor import colored
+from tqdm import tqdm
+import random
 
 # p1 = 1   p2 = -1
 hidden_layer_mult = 3
@@ -63,7 +65,7 @@ class GameBoard:
 			if i >= self.size:
 				is_not_out_of_bounds = False
 				break;
-		if is_not_out_of_bounds:	
+		if is_not_out_of_bounds:
 			if self.board[pos] == 0:
 				self.board[pos] = num
 				number_to_remove = np.ravel_multi_index(pos, self.board.shape)
@@ -71,10 +73,10 @@ class GameBoard:
 				self.plausible_moves = np.delete(self.plausible_moves, index_to_remove)
 				self.filled_spaces += 1
 			else:
-				pos = input('This space is filled. Try again: ')
+				pos = eval(input('This space is filled. Try again: '))
 				self.fill_space(num, pos)
 		else:
-			pos = input('This space is out of bounds. Try again: ')
+			pos = eval(input('This space is out of bounds. Try again: '))
 			self.fill_space(num, pos)
 
 	def requestInput(self, random=True):
@@ -90,7 +92,7 @@ class GameBoard:
 			if self.current_turn == 1:
 				pos = None
 				if self.human_mode:
-					pos = input('Place a 1 onto an empty square: ')
+					pos = eval(input('Place a 1 onto an empty square: '))
 				else:
 					pos = self.requestInput(False)
 				self.fill_space(1, pos)
@@ -119,24 +121,24 @@ class GameBoard:
 				if self.show_computer_progress: print("Game #{0: <6} It's a draw".format(self.game_num));
 				self.draw_count += 1
 				if self.training_mode:
-					self.controller.game_result = 'draw'
+					self.controller.game_result = (0, self.filled_spaces)
 			elif self.found_winner == 1:
 				if self.show_computer_progress: print("Game #{0: <6} Computer 1 wins.".format(self.game_num));
 				self.p1_win_count += 1
 				if self.training_mode:
-					self.controller.game_result = 'win'
+					self.controller.game_result = (1, self.filled_spaces)
 			elif self.found_winner == 2:
 				if self.show_computer_progress: print("Game #{0: <6} Computer 2 wins.".format(self.game_num));
 				self.p2_win_count += 1
 				if self.training_mode:
-					self.controller.game_result = 'loss'
+					self.controller.game_result = (-1, self.filled_spaces)
 
 		if self.human_mode:
-			should_restart = raw_input('Restart? y\\n: ')
+			should_restart = input('Restart? y\\n: ')
 			if should_restart == 'y' or should_restart == 'Y':
 				self.restart()
 			else:
-				print("Thanks for playing!") 
+				print("Thanks for playing!")
 
 	def restart(self):
 		if self.current_turn == 1 : self.current_turn = 2
@@ -162,50 +164,71 @@ class TicTacToeBot:
 		self.game = GameBoard(self.size, self.ndim, False, self, False, True)
 		self.game.current_turn = np.random.randint(2) + 1
 		self.game.main()
-		if self.game_result == 'win':
-			return 1
-		elif self.game_result == 'loss':
-			return -1
+		status, filled_spaces = self.game_result
+		if status >= 0:
+			return self.num_blocks - filled_spaces + 1
 		else:
-			return 1
+			return filled_spaces - self.num_blocks - 1
 
-	def train(self, num_subjects=20, num_tribulations=100, num_generations=20, mutation_parameter=0.05, show_progress=True, start_randomly=True):
 
+	def mutate(self, thetas, mutation_parameter=0.05):
+		delta = theta_generator(self.num_blocks, self.num_hidden_layers - 1,mutation_parameter)
+		return tuple(thetas[k] + delta[k] for k in range(self.num_thetas))
+
+	def crossover(self, p1, p2):
+		child = tuple(x.copy() for x in p1)
+		for k in range(self.num_thetas):
+			for i in range(len(p2[k])):
+				for j in range(len(p2[k][i])):
+					if random.random() < 0.5:
+						child[k][i][j] = p2[k][i][j]
+		return child
+
+	def train(self, num_subjects=20, num_tribulations=100, num_generations=20, mutation_parameter=0.05, show_progress=True, start_randomly=True, poolsize=4):
+		population = []
 		if start_randomly:
-			self.thetas = theta_generator(self.num_blocks, self.num_hidden_layers - 1, 1)
+			for _ in range(num_subjects):
+				population.append(theta_generator(self.num_blocks, self.num_hidden_layers - 1, 1))
+			self.thetas = population[0]
+		else:
+			population.append(self.thetas)
+			for _ in range(num_subjects - 1):
+				population.append(self.mutate(self.thetas, mutation_parameter))
 
 		last_performance = 0
-		subjects = []
-		
-
 		for generation in range(num_generations):
-			subjects = [None] * num_subjects
-			for i in range(num_subjects):
-				delta = theta_generator(self.num_blocks, self.num_hidden_layers - 1, mutation_parameter)
-				subjects[i] = tuple(self.thetas[k] + delta[k] for k in range(self.num_thetas))
+			results = []
+			for t in tqdm(population):
+				score = sum(self.single_play(t) for _ in range(num_tribulations))
+				results.append((t, score))
 
-			results = [0] * num_subjects
-			for i in range(num_subjects):
-				for test in range(num_tribulations):
-					results[i] += self.single_play(subjects[i])
-
-			best_performance = max(results)
-			if best_performance < last_performance:
-				# do nothing. just go back to the last best and mutate it
-				if show_progress:
-					print colored("Generation {0:<5} Worse   {1}".format(generation, best_performance), 'red')  	
-				continue
-				
+			results.sort(key=lambda x: -x[1])
+			best_performance = results[0][1]
+			avg_performance = np.mean([r[1] for r in results])
 			if show_progress:
-				if best_performance > last_performance:
-					print colored("Generation {0:<5} Better  {1}".format(generation, best_performance), 'green')
+				if avg_performance > last_performance:
+					print(colored("Generation {0:<5}: Avg: {1} | Best: {2}".format(generation, avg_performance, best_performance), 'green'))
+				elif avg_performance == last_performance:
+					print(colored("Generation {0:<5}: Avg: {1} | Best: {2}".format(generation, avg_performance, best_performance), 'yellow'))
 				else:
-					print colored("Generation {0:<5} Same    {1}".format(generation, best_performance), 'yellow')
+					print(colored("Generation {0:<5}: Avg: {1} | Best: {2}".format(generation, avg_performance, best_performance), 'red'))
 
-			self.thetas = subjects[results.index(best_performance)]
-			last_performance = best_performance
+
+			best = [results[i][0] for i in range(num_subjects // 2)]
+			mutation_parameter *= np.exp(-3 / num_generations)
+			population = best.copy()
+			for i in range(num_subjects - len(best)):
+				if random.random() < 0.33:
+					p1, p2 = random.sample(best, 2)
+					child = self.mutate(self.crossover(p1, p2), mutation_parameter)
+				else:
+					child = self.mutate(random.choice(best), mutation_parameter)
+				population.append(child)
+
+			self.thetas = best[0]
+			last_performance = avg_performance
 			self.trained = True
-		
+
 		print('Done training!')
 
 	def load(self, *thetas):
@@ -220,7 +243,7 @@ class TicTacToeBot:
 
 	def play_self(self, num_iters):
 		if not self.trained:
-			print "Bot has not yet been trained. Both sides are playing randomly."
+			print("Bot has not yet been trained. Both sides are playing randomly.")
 
 		self.game = GameBoard(self.size, self.ndim, False, self, self.show_computer_progress)
 		for i in range(num_iters):
@@ -234,7 +257,7 @@ class TicTacToeBot:
 
 	def play_human(self):
 		if not self.trained:
-			print "Bot has not yet been trained. It is playing randomly."
+			print("Bot has not yet been trained. It is playing randomly.")
 		self.game = GameBoard(self.size, self.ndim, True, self, self.show_computer_progress)
 		self.game.current_turn = np.random.randint(2) + 1
 		self.game.restart()
@@ -256,14 +279,30 @@ def theta_generator(size, extra_layers, mult=1):
 	theta_end = (mult * (np.random.rand(size, hidden_layer_mult * size + 1) - 0.5),)
 	return theta_start + theta_mids + theta_end
 
+def activate(x):
+	return 1 / (1 + np.exp(-np.array(x)))
+
 def neural_network_move(turn, thetas, board):
 	a = board.flatten()
 	if turn == 2:
 		a *= -1
 	vals = a
 	for t in thetas:
-		vals = np.dot(t, np.insert(vals, 0, 1))
+		vals = activate(np.dot(t, np.insert(vals, 0, 1)))
 
 	indices = np.nonzero(vals * (a == 0))[0]
 	best_guess = indices[np.argmax(vals[indices])]
 	return np.unravel_index(best_guess, board.shape)
+
+
+if __name__ == "__main__":
+	tictac = TicTacToeBot()
+	tictac.play_self(1000)
+
+	try:
+		tictac.train(start_randomly=True, num_subjects=20, num_tribulations=100, num_generations=20)
+	except KeyboardInterrupt:
+		pass
+
+	tictac.save('params')
+	tictac.play_self(1000)
